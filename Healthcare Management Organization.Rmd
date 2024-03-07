@@ -1,0 +1,658 @@
+---
+title: "HMO"
+output: html_document
+date: "2023-04-23"
+---
+
+## R Data Cleaning
+
+```{r}
+
+#install.packages("rworldmap", dependencies = TRUE )
+
+
+library(arules)
+library(kernlab)
+library(caret) 
+library(tidyverse)
+library(ggplot2)
+library(arulesViz)
+library(rworldmap)
+
+
+HMO=read.csv("https://intro-datascience.s3.us-east-2.amazonaws.com/HMO_data.csv",header=TRUE)
+head(HMO)
+```
+
+```{r}
+which(is.na(HMO$X))
+```
+
+```{r}
+which(is.na(HMO$age))
+```
+
+```{r}
+which(is.na(HMO$bmi))
+```
+
+```{r}
+which(is.na(HMO$children))
+```
+
+```{r}
+which(is.na(HMO$smoker))
+```
+
+```{r}
+which(is.na(HMO$location))
+```
+
+```{r}
+which(is.na(HMO$location_type))
+```
+
+```{r}
+which(is.na(HMO$education_level))
+```
+
+```{r}
+which(is.na(HMO$yearly_physical))
+```
+
+```{r}
+which(is.na(HMO$exercise))
+```
+
+```{r}
+which(is.na(HMO$married))
+```
+
+```{r}
+which(is.na(HMO$hypertension))
+```
+
+```{r}
+which(is.na(HMO$gender))
+```
+
+```{r}
+which(is.na(HMO$cost))
+```
+
+```{r}
+HMO$bmi[is.na(HMO$bmi)] = mean(HMO$bmi, na.rm = TRUE)
+```
+
+```{r}
+uniqv <- unique(HMO$hypertension)
+uniqv[which.max(tabulate(match(HMO$hypertension, uniqv)))]
+HMO$hypertension[is.na(HMO$hypertension)]= uniqv[which.max(tabulate(match(HMO$hypertension, uniqv)))]
+```
+
+```{r}
+which(is.na.data.frame(HMO))
+```
+
+```{r}
+#write.csv(HMO,"~/Downloads/Cleaning.csv", row.names = FALSE)
+```
+
+
+```{r}
+        ###### Data Modeling and Trend #########
+
+
+#install.packages("dplyr")              # Install dplyr package
+
+library(plotly) #Used plotly library
+library("dplyr") #Used dplyr library
+
+
+# Histogram to visual representation of count of people with active exercise vs Not-Active
+
+hist(HMO$age,col="Yellow",main = "Age Distribution")
+
+# Box Plot [ BMI vs Location Type ]
+
+df_bmi_location <- HMO[, c('bmi','location_type')]   # Subset the data to BMI and Location Type
+
+ggplot(df_bmi_location, aes(x=location_type, y=bmi)) + geom_boxplot(fill=c("blue","green")) + labs(x='Location Type', y='BMI') + ggtitle('BMI vs. Location Type') 
+  
+  
+# Bar Chart to observe visual representation of active smokers with respect to location
+
+
+library(ggplot2) # ggplot library referenced 
+
+num_smokers_by_location <- table(HMO$location[HMO$smoker == "yes"]) # Subset the data to Smoker as 'Yes' value
+
+df_smokers_by_location <- data.frame(location = names(num_smokers_by_location), num_smokers = as.numeric(num_smokers_by_location)) # Data frame created for Smokers and it's count by converting to numeric type 
+
+ggplot(df_smokers_by_location, aes(x = location, y = num_smokers)) + geom_bar(stat = "identity", fill = "blue") +labs(title = "Number of smokers by location", x = "Location", y = "Number of smokers")           # Bar chart ploted and aesthetics details provided
+ 
+
+
+
+
+
+
+
+```
+
+```{r}
+
+library(tidyverse)
+# Load the data set of healthcare customers
+df <- read.csv("https://intro-datascience.s3.us-east-2.amazonaws.com/HMO_data.csv")
+colnames(df)
+
+View(df)
+
+summary(df)
+
+colnames(df)
+
+#check if any col has na value
+sum(is.na(df$age))
+sum(is.na(df$bmi))
+sum(is.na(df$children))
+sum(is.na(df$smoker))
+sum(is.na(df$location))
+sum(is.na(df$location_type))
+sum(is.na(df$education_level))
+sum(is.na(df$yearly_physical))
+sum(is.na(df$exercise))
+sum(is.na(df$married))
+sum(is.na(df$hypertension))
+sum(is.na(df$gender))
+sum(is.na(df$cost))
+
+
+
+
+#from above, bmi and hypertension has na value
+#install.packages("imputeTS")
+library(imputeTS)
+#use interpolation to replace the nas of bmis
+df$bmi <- na_interpolation(df$bmi, option = "linear")
+# filter rows whre hypertention = na
+df <- df[!is.na(df$hypertension),]
+
+
+# double check the na count, and find both are o
+sum(is.na(df$bmi))
+sum(is.na(df$hypertension))
+
+
+# make a copy and make sure the df_tgt is the dataframe for the project
+df_tgt <- df
+
+
+#install packages
+#install.packages("Hmisc")
+#install.packages("car")
+#install.packages("corrplot")
+#install.packages("neuralnet")
+#install.packages("RSNNS")
+
+# Recap of the plot
+library(ggplot2)
+library("Hmisc")
+library("car")
+library("corrplot")
+library("neuralnet")
+library("RSNNS")
+
+
+
+#summary(df_tgt)
+linearmodel <- lm(cost~age+bmi+children+smoker+hypertension,data = df_tgt)
+summary(linearmodel)
+
+
+
+
+viftable<- vif(linearmodel)
+sorttable <- sort(viftable,decreasing=TRUE)
+sorttable
+#From VIF analysis, no significant factor found from cost to age, bmi, childer, smokeryes, hypertension
+
+
+summary(df_tgt)
+
+
+
+# age vs cost by exercise
+ggplot(data=df_tgt,aes(x=age, y=cost,colour =  exercise))+ geom_point() +
+  geom_smooth(method = "lm")+
+  theme_dark()
+
+
+# age vs cost by yearly_physical
+ggplot(data=df_tgt,aes(x=age, y=cost,colour =  yearly_physical))+ geom_point() +
+  geom_smooth(method = "lm")+
+  theme_dark()
+
+
+# bmi vs cost by yearly_physical
+ggplot(data=df_tgt,aes(x=bmi, y=cost,colour =  yearly_physical))+ geom_point() +
+  geom_smooth(method = "lm")+
+  theme_dark()
+
+
+
+# bmi vs cost by yearly_physical
+ggplot(data=df_tgt,aes(x=bmi, y=cost,colour =  yearly_physical))+ geom_point() +
+  geom_smooth(method = "lm")+
+  theme_dark()
+
+
+# age vs cost by  hypertension  
+ggplot(data=df_tgt,aes(x=age, y=cost,colour =   hypertension ))+ geom_point() +
+  geom_smooth(method = "lm")+
+  theme_dark()
+
+
+
+
+# bmi vs cost by exercise 
+ggplot(data=df_tgt,aes(x=bmi, y=cost,colour =  exercise ))+ geom_point() +
+  geom_smooth(method = "lm")+
+  theme_dark()
+
+
+
+#make copy to train df
+df_t <- df_tgt
+
+
+fig1 <-ggplot(data=df_t, aes(x=age, y=cost))+
+  geom_bar(stat="identity",fill="lightblue")+
+  theme_dark()
+fig1
+
+
+#install.packages("dplyr")
+
+library(dplyr)
+library(ggplot2)
+
+age_mean_cost <- df_tgt %>%
+  group_by(age) %>%
+  summarise_at(vars(cost), list(name = mean)) %>%
+  arrange(desc(name)) 
+  
+fig2 <-ggplot(data=age_mean_cost, aes(x = age, y = name))+
+  geom_col() +
+  theme_linedraw()
+fig2
+
+
+```
+
+
+
+ltype_mean_cost <- df_tgt %>%
+  group_by(gender) %>%
+  summarise_at(vars(cost), list(name = mean)) %>%
+  arrange(desc(name)) 
+fig3 <-ggplot(data=ltype_mean_cost, aes(x = gender, y = name))+
+  geom_col() +
+  theme_linedraw()
+fig3
+
+
+
+
+library(ggplot2)
+ltype_mean_cost <- df_tgt %>%
+  group_by(gender) %>%
+  summarise_at(vars(cost), list(name = mean)) %>%
+  arrange(desc(name)) 
+ggplot2::ggplot(data=ltype_mean_cost, aes(x = gender, y = name))+
+  geom_col() +
+  theme_linedraw()
+
+
+
+state_mean_cost <- df_tgt %>%
+  group_by(location) %>%
+  summarise_at(vars(cost), list(name = mean)) %>%
+  arrange(desc(name))
+state_mean_cost
+
+
+by_state_count <- df_tgt %>%
+  count(location) %>%
+arrange(desc(n))
+
+by_state_count
+
+
+
+#install.packages("maps")
+#install.packages("mapproj")
+#install.packages("reshape2")
+#install.packages("kernlab")
+#install.packages("caret")
+#install.packages("e1071")
+
+library(maps)
+library(ggmap)
+library("dplyr")
+
+us<-map_data("state")
+df_tgt$location<-tolower(df_tgt$location)
+agg1<-aggregate(df_tgt$cost,by=list(df_tgt$location),FUN=mean)
+agg2<-aggregate(df_tgt$cost,by=list(df_tgt$location),FUN=max)
+agg3<-aggregate(df_tgt$cost,by=list(df_tgt$location),FUN=min)
+agg1<-agg1%>%rename(location=Group.1)
+agg2<-agg2%>%rename(location=Group.1)
+aggmerge1<-merge(agg1,agg2,by = "location" )
+agg3<-agg3%>%rename(location=Group.1)
+aggmerge2<-merge(aggmerge1,agg3,by= "location")
+aggmerge2<-aggmerge2%>%rename(min=x,average=x.x,max=x.y)
+agg4<-aggmerge2[,c(2:4)]
+usmerge<-merge(us,aggmerge2,all.x=TRUE,by.x="region",by.y="location")
+usmerge<-usmerge%>%arrange(order)
+
+usmap1<-ggplot(usmerge)+geom_polygon(aes(x=long,y=lat,group=group,fill=average),color="green")+coord_map()
+usmap1
+
+
+
+usmap2<-ggplot(usmerge)+geom_polygon(aes(x=long,y=lat,group=group,fill=max),color="green")+coord_map()
+usmap2
+
+usmap3<-ggplot(usmerge)+geom_polygon(aes(x=long,y=lat,group=group,fill=min),color="green")+coord_map()
+usmap3
+
+
+# create subset from numerical varaiables to df1
+df1 <- df_t %>%
+  select(age,bmi,children,cost)
+  
+  
+# Calculate df1 correlations
+df1_cor <- round(cor(df1),digits = 4)
+df1_cor
+
+
+
+
+
+  #heat map of correlations
+library(reshape2)
+df1_melt <- melt(df1_cor)
+fig4 <- ggplot(data = df1_melt, aes(x=Var1, y=Var2,fill=value)) +geom_tile()
+fig4
+
+
+
+boxplot(df_t$cost,
+  ylab = "cost",
+  main = "cost boxplot"
+)
+
+
+#We can see for >75th quantile, there're a very long tail of cost
+
+
+#study outlier 5 number
+quantile(df_t$cost,probs = c(0.25,0.5,0.75,1))
+  
+
+print(mean(df_t$cost))
+print(range(df_t$cost))
+quantile(df_t$cost, probs = seq(from=0.75,to=1,by=0.05))
+
+
+print(mean(df_t$cost))
+print(range(df_t$cost))
+quantile(df_t$cost, probs = seq(from=0.75,to=1,by=0.05))
+
+
+cost_th <- quantile(df_t$cost,probs = c(0.75))
+cost_th
+
+
+#make a copy
+df_new_tgt <- df_t
+df_new_tgt_tgt <- df_new_tgt
+
+str(df_t)
+str(df_new_tgt)
+colnames(df_t)
+colnames(df_new_tgt)
+
+# remove the cost column from df_new_tgt
+#df_new_tgt <- df_new_tgt[,-14]
+
+colnames(df_new_tgt)
+
+head(df_new_tgt)
+
+str(df_new_tgt)
+
+ggplot(df_new_tgt, aes(x = bmi, fill = cost)) + 
+  geom_histogram() +                                              # Draw ggplot2 histogram with manual colors
+  scale_fill_manual(values = c("TRUE" = "red","FALSE" = "lightblue")) +
+  theme_dark()
+
+
+ggplot(df_new_tgt, aes(x = age, fill = cost)) + 
+  geom_histogram() +                                              # Draw ggplot2 histogram with manual colors
+  scale_fill_manual(values = c("TRUE" = "red","FALSE" = "lightblue")) +
+  theme_dark()
+  
+  
+  
+ggplot(df_new_tgt, aes(x = exercise, fill = cost)) +                                            # Draw ggplot2 histogram with manual colors
+  geom_histogram(stat="count")  
+  
+  
+ggplot(df_new_tgt, aes(x = education_level, fill = cost)) +                                            # Draw ggplot2 histogram with manual colors
+  geom_histogram(stat="count")  
+  
+ 
+# create training set
+set.seed(110)
+ratio_of_tgt = 0.8
+df_new_tgt_index <- sample(nrow(df_new_tgt), ratio_of_tgt * nrow(df_new_tgt) ,replace = FALSE)
+df_new_tgt_train <- df_new_tgt[df_new_tgt_index, ]
+df_new_tgt_test <- df_new_tgt[-df_new_tgt_index, ]
+
+
+str(df_new_tgt)
+
+
+#convert df_new_tgt_test chr to factor
+df_new_tgt$smoker <- as.factor(df_new_tgt$smoker)
+df_new_tgt$location <- as.factor(df_new_tgt$location)
+df_new_tgt$location_type <- as.factor(df_new_tgt$location_type)
+df_new_tgt$education_level <- as.factor(df_new_tgt$education_level)
+df_new_tgt$yearly_physical <- as.factor(df_new_tgt$yearly_physical)
+df_new_tgt$exercise <- as.factor(df_new_tgt$exercise)
+df_new_tgt$married <- as.factor(df_new_tgt$married)
+df_new_tgt$gender <- as.factor(df_new_tgt$gender)
+df_new_tgt$cost <- as.factor(df_new_tgt$cost)
+
+head(df_new_tgt)
+
+df_new_tgt_train$smoker <- as.factor(df_new_tgt_train$smoker)
+df_new_tgt_train$location <- as.factor(df_new_tgt_train$location)
+df_new_tgt_train$location_type <- as.factor(df_new_tgt_train$location_type)
+df_new_tgt_train$education_level <- as.factor(df_new_tgt_train$education_level)
+df_new_tgt_train$yearly_physical <- as.factor(df_new_tgt_train$yearly_physical)
+df_new_tgt_train$exercise <- as.factor(df_new_tgt_train$exercise)
+df_new_tgt_train$married <- as.factor(df_new_tgt_train$married)
+df_new_tgt_train$gender <- as.factor(df_new_tgt_train$gender)
+df_new_tgt_train$cost <- as.factor(df_new_tgt_train$cost)
+
+
+str(df_new_tgt_train)
+
+str(df_new_tgt_test)
+
+
+df_new_tgt_test$smoker <- as.factor(df_new_tgt_test$smoker)
+df_new_tgt_test$location <- as.factor(df_new_tgt_test$location)
+df_new_tgt_test$location_type <- as.factor(df_new_tgt_test$location_type)
+df_new_tgt_test$education_level <- as.factor(df_new_tgt_test$education_level)
+df_new_tgt_test$yearly_physical <- as.factor(df_new_tgt_test$yearly_physical)
+df_new_tgt_test$exercise <- as.factor(df_new_tgt_test$exercise)
+df_new_tgt_test$married <- as.factor(df_new_tgt_test$married)
+df_new_tgt_test$gender <- as.factor(df_new_tgt_test$gender)
+df_new_tgt_test$cost <- as.factor(df_new_tgt_test$cost)
+
+
+
+
+levels(df_new_tgt_train$location)
+
+levels(df_new_tgt_test$location)
+
+levels(df_new_tgt_test$location) <- levels(df_new_tgt_train$location)
+
+str(df_new_tgt_test)
+
+library(kernlab)
+library(caret)
+library(e1071)
+
+
+set.seed(110)
+ratio_of_tgt = 0.8
+train_list <- createDataPartition(y=df_new_tgt_train$cost ,p=ratio_of_tgt,list=FALSE)
+train_df <- df_new_tgt_train[train_list,]
+test_df <- df_new_tgt_train[-train_list,]
+
+
+sapply(train_df, function(x) length(unique(x)))
+train_df[,3] <- factor(train_df[,3])
+
+
+head(train_df)
+
+
+#install.packages("kernlab")
+
+library(kernlab)
+
+svm_model <- ksvm(cost ~ ., data=train_df,C = 1,cross = 3, prob.model = TRUE)
+svm_model
+
+# training error of 11.91 %, training accuracy of 88.09 %
+
+
+# make predictions for future validation
+svmpredict <- predict(svm_model, test_df, type = "response")
+
+  
+#  confusion matrix with svmpredict
+CM <- confusionMatrix(svmpredict, test_df$cost)
+CM
+
+summary(svmpredict)
+
+
+svmpredict <- predict(svm_model, df_new_tgt_test, type = "response")
+CM1 <- confusionMatrix(svmpredict1, df_new_tgt_test$cost)
+CM1
+
+
+#install.packages("rpart.plot")
+library("rpart")
+library("rpart.plot")
+
+
+dfTree <- rpart(cost ~ ., data = df_new_tgt)
+prp(dfTree, faclen = 0, cex = 0.8, extra = 1)
+dfTree
+
+
+
+#remove X col
+assoc_data <- df_new_tgt_train[,-1]
+str(assoc_data)
+
+#install.packages("arules")
+#install.packages("arulesViz")
+
+library(arules)
+library(arulesViz)
+
+
+
+
+par(mar = c(0,0,0,0))
+
+cartTree <- rpart(cost ~ ., data = df_new_tgt)
+prp(cartTree, faclen = 0, cex = 0.8, extra = 1)
+cartTree
+
+
+
+
+predictValues <- predict(cartTree, newdata=df_new_tgt)
+predictValues <- predict(cartTree, newdata=df_new_tgt, type = "class")
+confMatrix <- table(predictValues,df_new_tgt$expensive)
+confMatrix
+
+
+
+accuracy <- 1 - (sum(confMatrix) - sum(diag(confMatrix)))/sum(confMatrix)
+accuracy
+
+
+
+library(caret)
+# makes the sampling predictable
+set.seed(110)
+# Randomly sample elements to go into a training data set
+trainList <- createDataPartition(y=df_new_tgt$expensive,p=.80,list=FALSE)
+# Include all of those elements in the training set
+trainSet <- df_new_tgt[trainList,]
+# Construct test set from everything that didn’t go into the training
+testSet <- df_new_tgt[-trainList,]
+
+
+head(trainList)
+
+cartTree <- rpart(expensive~ ., data = trainSet)
+prp(cartTree, faclen = 0, cex = 0.8, extra = 1)
+
+
+
+#Note use of “class”
+predictValues <- predict(cartTree,newdata=testSet,type = "class")
+#simpler way to do confusion matrix
+confusion <- confusionMatrix(predictValues,testSet$expensive)
+confusion$overall[1]
+
+
+
+
+cartTree1 <- train(expensive ~ ., data=trainSet, method="rpart")
+prp(cartTree1$finalModel, faclen = 0, cex = 0.8, extra = 1)
+
+
+predictValues <- predict(cartTree1,newdata=testSet, type = "raw")
+confusion <- confusionMatrix(predictValues, testSet$expensive)
+confusion
+
+
+varImp(cartTree)
+
+varImp(cartTree1)
+plot(varImp(cartTree1))
+
+
+
+varImp(cartTree)
+varImp(cartTree1)
+plot(varImp(cartTree1))
+
+
+
